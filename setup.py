@@ -16,11 +16,11 @@ setup(
         'matplotlib'],
     entry_points={
         'console_scripts': [
-            'cs2star = sqdtools.scripts.cs2star:cli',
-            'histogram = sqdtools.scripts.histogram:cli',
-            'histogram2d = sqdtools.scripts.histogram2D:cli',
-            'plotAssign = sqdtools.scripts.plot_assign:cli',
-            'rebalance = sqdtools.scripts.rebalance:cli',
+            'sqdt_cs2star = sqdtools.scripts.cs2star:cli',
+            'sqdt_histogram = sqdtools.scripts.histogram:cli',
+            'sqdt_histogram2d = sqdtools.scripts.histogram2D:cli',
+            'sqdt_plotAssign = sqdtools.scripts.plot_assign:cli',
+            'sqdt_rebalance = sqdtools.scripts.rebalance:cli',
         ],
     },
     python_requires='>=3.9'
