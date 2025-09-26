@@ -12,7 +12,20 @@ To Do:
 def load_data(filename, data_column):
     star_df = starfile.read(filename)
 
-    valid_data_columns = star_df['particles'].columns.tolist()
+    # check if the starfile is for micrographs, or particles, but not both
+    match star_df:
+        case {'particles': _, 'micrographs': _}:
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} both 'micrographs' and 'particles' exist in this file")
+            exit()
+        case {'micrographs': _}:
+            star_file_type = 'micrographs'
+        case {'particles': _}:
+            star_file_type = 'particles'
+        case _:
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown starfile type.")
+            exit()
+
+    valid_data_columns = star_df[star_file_type].columns.tolist()
 
     # print the data columns in the star file and quit
     if data_column == "list":
@@ -30,10 +43,12 @@ def load_data(filename, data_column):
         exit()
 
     # make a dataframe of only what is needed
-    data = star_df['particles'][['rlnClassNumber', data_column]]
-    # try:
-    #     read from micrographs
-    return data
+    if star_file_type == 'particles':
+        data = star_df[star_file_type][['rlnClassNumber', data_column]]
+    elif star_file_type == 'micrographs':
+        data = star_df[star_file_type][[data_column]]
+
+    return data, star_file_type
 
 
 def fdb(data):
@@ -69,9 +84,14 @@ def histogram_by_class(df, data_column, classes):
 def histogram(df, data_column, classes):
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
     ax.hist(df[data_column], bins=fdb(df[data_column]), color='blue')
-    ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
+
+    # set tile and axis based on infered star_file_type
     ax.set_xlabel(f"{data_column}")
-    ax.set_ylabel("Number of particles")
+    if classes:
+        ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
+        ax.set_ylabel("Number of particles")
+    else:
+        ax.set_ylabel("Number of micrographs")
     return fig
 
 
@@ -89,8 +109,8 @@ def validate_extension(path, extension):
 @click.command(no_args_is_help=True)
 @click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
-@click.option('--by_class', is_flag=True, help="Split by class.")
-@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes.", metavar='<class number>')
+@click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
+@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
 def cli(input, data_column, classes, by_class, out):
     """
@@ -102,18 +122,23 @@ def cli(input, data_column, classes, by_class, out):
     input = validate_extension(input, '.star')
 
     click.echo(f"  Reading \"{input.split('/')[-1]}\"...")  # Gets file name from the path
-    data = load_data(input, data_column)
+    data, star_file_type = load_data(input, data_column)
 
-    if not classes:
-        classes = data['rlnClassNumber'].unique()
-    elif '[' in classes:
-        classes = eval(classes)
-    else:
-        classes = [int(classes)]
+    # evaluates classes if particles
+    if star_file_type == 'paricles':
+        if not classes:
+            classes = data['rlnClassNumber'].unique()
+        elif '[' in classes:
+            classes = eval(classes)
+        else:
+            classes = [int(classes)]
 
-    classes.sort()
-    filter = data['rlnClassNumber'].isin(classes)
-    data = data[filter]
+        classes.sort()
+        filter = data['rlnClassNumber'].isin(classes)
+        data = data[filter]
+    elif star_file_type == 'micrographs':
+        classes = None
+        by_classes = None
 
     if by_class:
         click.echo("  Plotting data by class...")
