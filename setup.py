@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sqdtools',
-    version='0.1.0',
+    version='0.1.1',
     author='George Ghanim',
     author_email='gghanim@princeton.edu',
     packages=find_packages(),
@@ -23,5 +23,5 @@ setup(
             'sqdt_rebalance = sqdtools.scripts.rebalance:cli',
         ],
     },
-    python_requires='>=3.9'
+    python_requires='>=3.11'
 )
