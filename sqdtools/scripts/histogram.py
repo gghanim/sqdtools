@@ -74,6 +74,7 @@ def histogram(df, data_column, classes):
     ax.set_ylabel("Number of particles")
     return fig
 
+
 def validate_extension(path, extension):
     if path.endswith(extension):
 
@@ -83,6 +84,7 @@ def validate_extension(path, extension):
         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} Wrong file format. \"{path}\" does not end with \"{extension}\".")
 
         raise ValueError()
+
 
 @click.command(no_args_is_help=True)
 @click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
