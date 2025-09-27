@@ -74,20 +74,6 @@ def calculate_bins(bin_width, dataframe):
 def eval_bins(bin_width, dataframe, star_file_type, by_class):
     if not bin_width:  # and not by_class:
         bins = fdb(dataframe)
-
-    elif '{' in bin_width and by_class:
-        if star_file_type == 'particles':
-            bin_width = ast.literal_eval(bin_width)
-            bins = {classes: calculate_bins(bin_width, dataframe) for classes, bin_width in bin_width.items()}
-
-        elif star_file_type == 'micrographs':
-            click.echo(f"  {click.style('WARNING:', fg='red', bold=True)} Bin widths by class cannot be specified for micrographs star files. Ignored.")
-            bins = fdb(dataframe)
-
-    elif '{' in bin_width and not by_class:  # catches passing classes without by_classes
-        click.echo(f"  {click.style('WARNING:', fg='red', bold=True)} Bin widths by class cannot be specified without \" --by_classes\". Ignored.")
-        bins = fdb(dataframe)
-
     else:
         bin_width = int(bin_width)
         bins = calculate_bins(bin_width, dataframe)
@@ -95,7 +81,7 @@ def eval_bins(bin_width, dataframe, star_file_type, by_class):
     return bins
 
 
-def histogram_by_class(df, data_column, classes, bins):
+def histogram_by_class(df, data_column, classes, bins, bin_width):
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
 
     # Deal with edge case of 1 class passed
@@ -105,7 +91,9 @@ def histogram_by_class(df, data_column, classes, bins):
     for ax, class_number in zip(axs, classes):
         filter = df['rlnClassNumber'] == class_number
         class_data = df[filter][data_column]
-        bins = fdb(class_data) if not bins else bins
+
+        bins = fdb(class_data) if not bin_width else bins
+
         ax.hist(class_data, bins=bins, color='blue')
         ax.set_title(f'Class {class_number}: {data_column}')
     return fig
@@ -143,7 +131,7 @@ def validate_extension(path, extension):
 @click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>|[1, 2, 5]')
 #@click.option('--x', '--x_axis', 'x_axis', type=str, help="Specify X-axis scale. Pass as python list.", metavar='[min, max]')
 #@click.option('--y', '--y_axis', 'y_axis', type=str, help="Specify Y-axis scale. Pass as python list.", metavar='[min, max]')
-@click.option('--b', '--bin_width', 'bin_width', type=str, help="Specify bin width. Pass as python dictionary for each class", metavar='<bin width>|{1: 5, 5: 100}')
+@click.option('--b', '--bin_width', 'bin_width', type=str, help="Manualy specify bin width.", metavar='<bin width>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
 def cli(input, data_column, classes, by_class, out, bin_width):
     """
@@ -179,7 +167,7 @@ def cli(input, data_column, classes, by_class, out, bin_width):
     # plots the data
     if by_class:
         click.echo("  Plotting data by class...")
-        histogram_by_class(data, data_column, classes, bins)
+        histogram_by_class(data, data_column, classes, bins, bin_width)
     else:
         click.echo("  Plotting data...")
         histogram(data, data_column, classes, bins)
