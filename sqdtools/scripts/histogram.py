@@ -72,7 +72,7 @@ def calculate_bins(bin_width, dataframe):
 
 
 def eval_bins(bin_width, dataframe, star_file_type, by_class):
-    if not bin_width:
+    if not bin_width and not by_class:
         bins = fdb(dataframe)
 
     elif '{' in bin_width and by_class:
@@ -105,6 +105,7 @@ def histogram_by_class(df, data_column, classes, bins):
     for ax, class_number in zip(axs, classes):
         filter = df['rlnClassNumber'] == class_number
         class_data = df[filter][data_column]
+        bins = fdb(class_data) if not bins else bins
         ax.hist(class_data, bins=bins, color='blue')
         ax.set_title(f'Class {class_number}: {data_column}')
     return fig
@@ -116,7 +117,7 @@ def histogram(df, data_column, classes, bins):
 
     # set tile and axis based on infered star_file_type
     ax.set_xlabel(f"{data_column}")
-    if classes:
+    if any(classes):
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
         ax.set_ylabel("Number of particles")
     else:
