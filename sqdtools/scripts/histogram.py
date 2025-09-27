@@ -65,8 +65,7 @@ def fdb(data):
     return num_bins
 
 
-def histogram_by_class(df, data_column, classes):
-    bins = fdb(df[data_column])
+def histogram_by_class(df, data_column, classes, bins):
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
 
     # Deal with edge case of 1 class passed
@@ -81,9 +80,9 @@ def histogram_by_class(df, data_column, classes):
     return fig
 
 
-def histogram(df, data_column, classes):
+def histogram(df, data_column, classes, bins):
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
-    ax.hist(df[data_column], bins=fdb(df[data_column]), color='blue')
+    ax.hist(df[data_column], bins=bins, color='blue')
 
     # set tile and axis based on infered star_file_type
     ax.set_xlabel(f"{data_column}")
@@ -106,26 +105,30 @@ def validate_extension(path, extension):
         raise ValueError()
 
 
-@click.command(no_args_is_help=True)
-@click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
+@click.command(no_args_is_help=False) # FIX
+@click.option('--i', '--input', 'input', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
-@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>')
+@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>|[1, 2, 5]')
+#@click.option('--x', '--x_axis', 'x_axis', type=str, help="Specify X-axis scale. Pass as python list.", metavar='[min, max]')
+#@click.option('--y', '--y_axis', 'y_axis', type=str, help="Specify Y-axis scale. Pass as python list.", metavar='[min, max]')
+@click.option('--b', '--bin_width', 'bin_width', type=str, help="Specify bin width. Pass as python dictionary for each class", metavar='<bin width>|{1: 5, 5: 100}')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
-def cli(input, data_column, classes, by_class, out):
+def cli(input, data_column, classes, by_class, out, bin_width):
     """
     Plots a histogram.
     Defaults to Defocus plots.
     """
 
     # Validate the inputs
+    input = "/Users/george/Documents/Packages/sqdtools/sqdtools/testing/run_data.star"  #REMOVE
     input = validate_extension(input, '.star')
 
     click.echo(f"  Reading \"{input.split('/')[-1]}\"...")  # Gets file name from the path
     data, star_file_type = load_data(input, data_column)
 
     # evaluates classes if particles
-    if star_file_type == 'paricles':
+    if star_file_type == 'particles':
         if not classes:
             classes = data['rlnClassNumber'].unique()
         elif '[' in classes:
@@ -140,12 +143,18 @@ def cli(input, data_column, classes, by_class, out):
         classes = None
         by_classes = None
 
+    # sets the bin width
+    if bin_width:
+        bins = np.arange(min(data[data_column]), max(data[data_column]) + bin_width, bin_width)
+    else:
+        bins = fdb(data[data_column])
+
     if by_class:
         click.echo("  Plotting data by class...")
-        histogram_by_class(data, data_column, classes)
+        histogram_by_class(data, data_column, classes, bins)
     else:
         click.echo("  Plotting data...")
-        histogram(data, data_column, classes)
+        histogram(data, data_column, classes, bins)
 
     if out:
         # histogram.figsize = (11.80, 8.85)
