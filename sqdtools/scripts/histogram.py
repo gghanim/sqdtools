@@ -3,6 +3,7 @@ import starfile
 import matplotlib.pyplot as plt
 import numpy as np
 import click
+import ast
 """
 To Do:
   1. Equalize the axes sharey=True
@@ -129,7 +130,7 @@ def cli(input, data_column, classes, by_class, out):
         if not classes:
             classes = data['rlnClassNumber'].unique()
         elif '[' in classes:
-            classes = eval(classes)
+            classes = ast.literal_eval(classes)
         else:
             classes = [int(classes)]
 
