@@ -16,14 +16,14 @@ def load_data(filename, data_column):
     # check if the starfile is for micrographs, or particles, but not both
     match star_df:
         case {'particles': _, 'micrographs': _}:
-            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} both 'micrographs' and 'particles' exist in this file")
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} both 'micrographs' and 'particles' exist in this file.")
             exit()
         case {'micrographs': _}:
             star_file_type = 'micrographs'
         case {'particles': _}:
             star_file_type = 'particles'
         case _:
-            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown starfile type.")
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown star file type.")
             exit()
 
     valid_data_columns = star_df[star_file_type].columns.tolist()
@@ -98,12 +98,9 @@ def histogram(df, data_column, classes):
 
 def validate_extension(path, extension):
     if path.endswith(extension):
-
         return path
-
     else:
         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} Wrong file format. \"{path}\" does not end with \"{extension}\".")
-
         raise ValueError()
 
 
@@ -137,6 +134,7 @@ def cli(input, data_column, classes, by_class, out):
         classes.sort()
         filter = data['rlnClassNumber'].isin(classes)
         data = data[filter]
+
     elif star_file_type == 'micrographs':
         classes = None
         by_class = None
