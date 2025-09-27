@@ -5,6 +5,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # from colorama import Fore, Style, init
 import click
 from os import listdir as os_listdir, path as os_path
+import ast
 """
 To Do:
   1. Equalize the axes sharey=True
@@ -41,7 +42,6 @@ def load_data(filename, data_column_x, data_column_y):
     # try:
     #     read from micrographs
     return data
-
 
 
 def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes):
@@ -88,6 +88,7 @@ def get_file_paths(dir, suffix) -> list[str]:
     rel_filtered_paths = [os_path.join(dir, file) for file in filtered_paths]
     rel_filtered_paths.sort()
     return rel_filtered_paths
+
 
 def validate_extension(path, extension):
     if path.endswith(extension):
@@ -145,7 +146,7 @@ def cli(input, data_column_x, data_column_y, classes, by_class, out):
     if not classes:  # Get all classes if not specified
         classes = data['rlnClassNumber'].unique()
     elif '[' in classes:  # Checks for a list of classes
-        classes = eval(classes)
+        classes = ast.literal_eval(classes)
     else:
         classes = [int(classes)]
 
