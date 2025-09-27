@@ -125,7 +125,7 @@ def cli(input, data_column, classes, by_class, out):
     data, star_file_type = load_data(input, data_column)
 
     # evaluates classes if particles
-    if star_file_type == 'paricles':
+    if star_file_type == 'particles':
         if not classes:
             classes = data['rlnClassNumber'].unique()
         elif '[' in classes:
@@ -138,7 +138,7 @@ def cli(input, data_column, classes, by_class, out):
         data = data[filter]
     elif star_file_type == 'micrographs':
         classes = None
-        by_classes = None
+        by_class = None
 
     if by_class:
         click.echo("  Plotting data by class...")
