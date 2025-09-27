@@ -72,7 +72,7 @@ def calculate_bins(bin_width, dataframe):
 
 
 def eval_bins(bin_width, dataframe, star_file_type, by_class):
-    if not bin_width and not by_class:
+    if not bin_width:  # and not by_class:
         bins = fdb(dataframe)
 
     elif '{' in bin_width and by_class:
