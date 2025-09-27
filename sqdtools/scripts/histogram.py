@@ -3,6 +3,7 @@ import starfile
 import matplotlib.pyplot as plt
 import numpy as np
 import click
+import ast
 """
 To Do:
   1. Equalize the axes sharey=True
@@ -65,6 +66,35 @@ def fdb(data):
     return num_bins
 
 
+def calculate_bins(bin_width, dataframe):
+    bins = np.arange(min(dataframe), max(dataframe) + bin_width, bin_width)
+    return bins
+
+
+def eval_bins(bin_width, dataframe, star_file_type, by_class):
+    if not bin_width:
+        bins = fdb(dataframe)
+
+    elif '{' in bin_width and by_class:
+        if star_file_type == 'particles':
+            bin_width = ast.literal_eval(bin_width)
+            bins = {classes: calculate_bins(bin_width, dataframe) for classes, bin_width in bin_width.items()}
+
+        elif star_file_type == 'micrographs':
+            click.echo(f"  {click.style('WARNING:', fg='red', bold=True)} Bin widths by class cannot be specified for micrographs star files. Ignored.")
+            bins = fdb(dataframe)
+
+    elif '{' in bin_width and not by_class:  # catches passing classes without by_classes
+        click.echo(f"  {click.style('WARNING:', fg='red', bold=True)} Bin widths by class cannot be specified without \" --by_classes\". Ignored.")
+        bins = fdb(dataframe)
+
+    else:
+        bin_width = int(bin_width)
+        bins = calculate_bins(bin_width, dataframe)
+
+    return bins
+
+
 def histogram_by_class(df, data_column, classes, bins):
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
 
@@ -105,8 +135,8 @@ def validate_extension(path, extension):
         raise ValueError()
 
 
-@click.command(no_args_is_help=False) # FIX
-@click.option('--i', '--input', 'input', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
+@click.command(no_args_is_help=True)
+@click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
 @click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>|[1, 2, 5]')
@@ -121,7 +151,6 @@ def cli(input, data_column, classes, by_class, out, bin_width):
     """
 
     # Validate the inputs
-    input = "/Users/george/Documents/Packages/sqdtools/sqdtools/testing/run_data.star"  #REMOVE
     input = validate_extension(input, '.star')
 
     click.echo(f"  Reading \"{input.split('/')[-1]}\"...")  # Gets file name from the path
@@ -132,7 +161,7 @@ def cli(input, data_column, classes, by_class, out, bin_width):
         if not classes:
             classes = data['rlnClassNumber'].unique()
         elif '[' in classes:
-            classes = eval(classes)
+            classes = ast.literal_eval(classes)
         else:
             classes = [int(classes)]
 
@@ -141,14 +170,12 @@ def cli(input, data_column, classes, by_class, out, bin_width):
         data = data[filter]
     elif star_file_type == 'micrographs':
         classes = None
-        by_classes = None
+        by_class = None
 
-    # sets the bin width
-    if bin_width:
-        bins = np.arange(min(data[data_column]), max(data[data_column]) + bin_width, bin_width)
-    else:
-        bins = fdb(data[data_column])
+    # evaluates bin widths
+    bins = eval_bins(bin_width, data[data_column], star_file_type, by_class)
 
+    # plots the data
     if by_class:
         click.echo("  Plotting data by class...")
         histogram_by_class(data, data_column, classes, bins)
