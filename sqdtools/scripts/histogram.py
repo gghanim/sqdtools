@@ -1,9 +1,9 @@
 # a python script to plot histograms of data, etc...
-import starfile
+from starfile import read
 import matplotlib.pyplot as plt
 import numpy as np
 import click
-import ast
+from ast import literal_eval
 """
 To Do:
   1. Equalize the axes sharey=True
@@ -11,7 +11,7 @@ To Do:
 
 
 def load_data(filename, data_column):
-    star_df = starfile.read(filename)
+    star_df = read(filename)
 
     # check if the starfile is for micrographs, or particles, but not both
     match star_df:
@@ -82,7 +82,7 @@ def histogram_by_class(df, data_column, classes):
     return fig
 
 
-def histogram(df, data_column, classes):
+def histogram(df, data_column, classes, star_file_type):
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
     ax.hist(df[data_column], bins=fdb(df[data_column]), color='blue')
 
@@ -91,7 +91,11 @@ def histogram(df, data_column, classes):
     if any(classes):
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
         ax.set_ylabel("Number of particles")
-    else:
+
+    elif star_file_type == 'particles':
+        ax.set_ylabel("Number of particles")
+
+    elif star_file_type == 'micrographs':
         ax.set_ylabel("Number of micrographs")
     return fig
 
@@ -127,7 +131,7 @@ def cli(input, data_column, classes, by_class, out):
         if not classes:
             classes = data['rlnClassNumber'].unique()
         elif '[' in classes:
-            classes = ast.literal_eval(classes)
+            classes = literal_eval(classes)
         else:
             classes = [int(classes)]
 
@@ -144,7 +148,7 @@ def cli(input, data_column, classes, by_class, out):
         histogram_by_class(data, data_column, classes)
     else:
         click.echo("  Plotting data...")
-        histogram(data, data_column, classes)
+        histogram(data, data_column, classes, star_file_type)
 
     if out:
         # histogram.figsize = (11.80, 8.85)
