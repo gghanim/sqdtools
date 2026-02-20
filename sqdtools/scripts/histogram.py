@@ -66,8 +66,19 @@ def fdb(data):
     return num_bins
 
 
-def histogram_by_class(df, data_column, classes):
-    bins = fdb(df[data_column])
+def calculate_bins(bin_width, dataframe):
+    bin_width = float(bin_width)
+    bins = np.arange(min(dataframe), max(dataframe) + bin_width, bin_width)
+    return bins
+
+
+def histogram_by_class(df, data_column, classes, bin_width):
+    bins = fdb(class_data) if not bin_width else calculate_bins(bin_width, df[data_column])
+    # if not bin_width:
+    #     bins = fdb(df[data_column])
+    # elif bin_width:
+    #     bins = calculate_bins(bin_width, df[data_column])
+
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
 
     # Deal with edge case of 1 class passed
@@ -82,9 +93,15 @@ def histogram_by_class(df, data_column, classes):
     return fig
 
 
-def histogram(df, data_column, classes, star_file_type):
+def histogram(df, data_column, classes, star_file_type, bin_width):
+    bins = fdb(class_data) if not bin_width else calculate_bins(bin_width, df[data_column])
+    # if not bin_width:
+    #     bins = fdb(df[data_column])
+    # elif bin_width:
+    #     bins = calculate_bins(bin_width, df[data_column])
+
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
-    ax.hist(df[data_column], bins=fdb(df[data_column]), color='blue')
+    ax.hist(df[data_column], bins=bins, color='blue')
 
     # set tile and axis based on infered star_file_type
     ax.set_xlabel(f"{data_column}")
@@ -113,8 +130,9 @@ def validate_extension(path, extension):
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
 @click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>')
+@click.option('--b', '--bin_width', 'bin_width', type=str, help="Manualy specify bin width.", metavar='<bin width>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
-def cli(input, data_column, classes, by_class, out):
+def cli(input, data_column, classes, by_class, bin_width, out):
     """
     Plots a histogram.
     Defaults to Defocus plots.
@@ -145,10 +163,10 @@ def cli(input, data_column, classes, by_class, out):
 
     if by_class:
         click.echo("  Plotting data by class...")
-        histogram_by_class(data, data_column, classes)
+        histogram_by_class(data, data_column, classes, bin_width)
     else:
         click.echo("  Plotting data...")
-        histogram(data, data_column, classes, star_file_type)
+        histogram(data, data_column, classes, star_file_type, bin_width)
 
     if out:
         # histogram.figsize = (11.80, 8.85)
