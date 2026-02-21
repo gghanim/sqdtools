@@ -73,7 +73,7 @@ def calculate_bins(bin_width, dataframe):
 
 
 def histogram_by_class(df, data_column, classes, bin_width, x_range):
-    bins = fdb(class_data) if not bin_width else calculate_bins(bin_width, df[data_column])
+    bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
     # if not bin_width:
     #     bins = fdb(df[data_column])
     # elif bin_width:
@@ -99,7 +99,7 @@ def histogram_by_class(df, data_column, classes, bin_width, x_range):
 
 
 def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
-    bins = fdb(class_data) if not bin_width else calculate_bins(bin_width, df[data_column])
+    bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
 
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
     ax.hist(df[data_column], bins=bins, color='purple')
