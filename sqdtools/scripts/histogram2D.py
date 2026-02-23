@@ -12,7 +12,6 @@ import functools
 
 """
 To Do:
-  1. get working
   3. expand to micrographs
 
   1. Equalize the axes sharey=True
@@ -63,7 +62,21 @@ def load_data(filename, data_column_x, data_column_y):
     click.echo(f"  Reading \"{filename.split('/')[-1]}\"...")
 
     star_df = read_star(filename)
-    star_df = star_df['particles'].to_pandas()
+
+    # check if the starfile is for micrographs, or particles, but not both
+    match star_df:
+        case {'particles': _, 'micrographs': _}:
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} both 'micrographs' and 'particles' exist in this file.")
+            exit()
+        case {'micrographs': _}:
+            star_file_type = 'micrographs'
+        case {'particles': _}:
+            star_file_type = 'particles'
+        case _:
+            click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown star file type.")
+            exit()
+
+    star_df = star_df[star_file_type].to_pandas()
     valid_data_columns = star_df.columns.tolist()
 
     # print the data columns in the star file and quit
@@ -81,14 +94,23 @@ def load_data(filename, data_column_x, data_column_y):
             print(f"   {item}")
         exit()
 
-    data = star_df[['rlnClassNumber', data_column_x, data_column_y]]
-    return data
+    # make a dataframe of only what is needed
+    if star_file_type == 'particles':
+        data = star_df[['rlnClassNumber', data_column_x, data_column_y]]
+    elif star_file_type == 'micrographs':
+        data = star_df[[data_column_x, data_column_y]]
+
+    return data, star_file_type
+    # data = star_df[['rlnClassNumber', data_column_x, data_column_y]]
+    # return data
 
 
 def histogram2d(df, data_column_x, data_column_y, gridsize, classes):
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
-    hb = ax.hexbin(df[data_column_x], df[data_column_y], bins='log', gridsize=gridsize)  # cmap=colormap, gridsize=gridsize)
-    ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column_x} vs. {data_column_y}")
+    hb = ax.hexbin(df[data_column_x], df[data_column_y], bins='log', gridsize=gridsize)
+
+    if classes and any(classes):
+        ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column_x} vs. {data_column_y}")
     ax.set_xlabel(data_column_x)
     ax.set_ylabel(data_column_y)
     # fig.gca().set_aspect('equal', adjustable='box')
@@ -178,20 +200,25 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
         gridsize = 50
 
     #data = load_data(input_file, data_column_x, data_column_y)
-    data = load_data(input_file, data_column_x, data_column_y)
+    data, star_file_type = load_data(input_file, data_column_x, data_column_y)
 
-    # Allows sorting by classes
-    if not classes:  # Get all classes if not specified
-        classes = data['rlnClassNumber'].unique()
-    elif '[' in classes:  # Checks for a list of classes
-        classes = ast.literal_eval(classes)
-    else:
-        classes = [int(classes)]
+    # evaluates classes if particles
+    if star_file_type == 'particles':
+        if not classes:
+            classes = data['rlnClassNumber'].unique()
+        elif '[' in classes:  # Checks for a list of classes
+            classes = ast.literal_eval(classes)
+        else:
+            classes = [int(classes)]
 
-    # Filter the classes
-    classes.sort()
-    filter = data['rlnClassNumber'].isin(classes)
-    data = data[filter]
+        # Filter the classes
+        classes.sort()
+        filter = data['rlnClassNumber'].isin(classes)
+        data = data[filter]
+
+    elif star_file_type == 'micrographs':
+        classes = None
+        by_class = None
 
     if by_class:
         click.echo("  Plotting data by class...")
