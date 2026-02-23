@@ -70,8 +70,12 @@ def load_data(filename, data_column_x, data_column_y):
             exit()
         case {'micrographs': _}:
             star_file_type = 'micrographs'
+            if data_column_x == None: data_column_x = 'rlnCtfIceRingDensity'
+            if data_column_y == None: data_column_y = 'rlnCtfMaxResolution'
         case {'particles': _}:
             star_file_type = 'particles'
+            if data_column_x == None: data_column_x = 'rlnAngleRot'
+            if data_column_y == None: data_column_y = 'rlnAngleTilt'
         case _:
             click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown star file type.")
             exit()
@@ -88,7 +92,7 @@ def load_data(filename, data_column_x, data_column_y):
 
     # catches bad column names
     elif data_column_x not in valid_data_columns or data_column_x not in valid_data_columns:
-        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column_x}\" is not a valid column name in \"{input_file.split('/')[-1]}\"")
+        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column_x}\" is not a valid column name in \"{filename.split('/')[-1]}\"")
         click.echo("\n  The following are valid \"x\" and \"y\" data_column names:")
         for item in valid_data_columns:
             print(f"   {item}")
@@ -100,24 +104,28 @@ def load_data(filename, data_column_x, data_column_y):
     elif star_file_type == 'micrographs':
         data = star_df[[data_column_x, data_column_y]]
 
-    return data, star_file_type
-    # data = star_df[['rlnClassNumber', data_column_x, data_column_y]]
-    # return data
+    return data, star_file_type, data_column_x, data_column_y
 
 
-def histogram2d(df, data_column_x, data_column_y, gridsize, classes):
+def histogram2d(df, data_column_x, data_column_y, gridsize, classes, star_file_type):
     fig, ax = plt.subplots(1, 1, sharex=True, tight_layout=True)
     hb = ax.hexbin(df[data_column_x], df[data_column_y], bins='log', gridsize=gridsize)
 
-    if classes and any(classes):
+    if classes is not None:
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column_x} vs. {data_column_y}")
     ax.set_xlabel(data_column_x)
     ax.set_ylabel(data_column_y)
-    # fig.gca().set_aspect('equal', adjustable='box')
+
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.1)
     cb = fig.colorbar(hb, ax=ax, cax=cax)
     cb.set_label('Particles')
+
+    if star_file_type == 'particles':
+        cb.set_label('Particles')
+    elif star_file_type == 'micrographs':
+        cb.set_label('Micrographs')
+
     return fig
 
 
@@ -163,10 +171,10 @@ def validate_extension(path, extension):
 
 @click.command(no_args_is_help=True)
 @click.option('--i', '--input', 'input_file', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
-@click.option('--x', '--data_x', 'data_column_x', default='rlnAngleRot', show_default=True, type=str, help="RELION data column to plot on x. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
-@click.option('--y', '--data_y', 'data_column_y', default='rlnAngleTilt', show_default=True, type=str, help="RELION data column to plot on y. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
+@click.option('--x', '--data_x', 'data_column_x', show_default=False, type=str, help="RELION data column to plot on x. Default is 'rlnAngleRot' (particles) or 'rlnCtfIceRingDensity' (micrographs). \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
+@click.option('--y', '--data_y', 'data_column_y', show_default=False, type=str, help="RELION data column to plot on y. Default is 'rlnAngleTilt' (particles) or 'rlnCtfMaxResolution' (micrographs). \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class.")
-@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes.", metavar='<class number>')
+@click.option('--c', '--classes', 'classes', multiple=True, help="Specify which class to plot. You can specify multiple. Ignored for micrograph star files.", metavar='<class number>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
 def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
     """
@@ -176,7 +184,7 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
 
     # Validate the inputs
     input_file = validate_extension(input_file, '.star')
-
+    print(type(classes))
     # try to automatically set the gridsize
     try:
         model_files = get_file_paths(input_file, "_optimiser.star")
@@ -200,16 +208,16 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
         gridsize = 50
 
     #data = load_data(input_file, data_column_x, data_column_y)
-    data, star_file_type = load_data(input_file, data_column_x, data_column_y)
+    data, star_file_type, data_column_x, data_column_y = load_data(input_file, data_column_x, data_column_y)
 
     # evaluates classes if particles
     if star_file_type == 'particles':
         if not classes:
             classes = data['rlnClassNumber'].unique()
-        elif '[' in classes:  # Checks for a list of classes
-            classes = ast.literal_eval(classes)
+            print(f"Not classes {classes}")
         else:
-            classes = [int(classes)]
+            classes = [ int(n) for n in classes]
+
 
         # Filter the classes
         classes.sort()
@@ -225,7 +233,7 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
         histogram2d_by_class(data, data_column_x, data_column_y, gridsize, classes)
     else:
         click.echo("  Plotting data.")
-        histogram2d(data, data_column_x, data_column_y, gridsize, classes)
+        histogram2d(data, data_column_x, data_column_y, gridsize, classes, star_file_type)
 
     # Save if out specified, else plot
     if out:
