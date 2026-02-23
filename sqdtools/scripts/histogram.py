@@ -35,7 +35,7 @@ def load_data(filename, data_column):
 
     # catches bad column names
     elif data_column not in valid_data_columns:
-        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column}\" is not a valid column name in \"{input_file.split('/')[-1]}\"")
+        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column}\" is not a valid column name in \"{filename.split('/')[-1]}\"")
         click.echo("\n  The following are valid data_column names:")
         for item in valid_data_columns:
             print(f"   {item}")
