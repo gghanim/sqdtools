@@ -84,7 +84,6 @@ def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
     ax.set_xlabel(f"{data_column}")
     if classes and any(classes):
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
-        ax.set_ylabel("Number of particles")
 
     elif star_file_type == 'particles':
         ax.set_ylabel("Number of particles")
