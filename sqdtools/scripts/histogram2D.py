@@ -57,7 +57,7 @@ def timer(func):
 #     #     read from micrographs
 #     return data
 
-@timer
+#@timer
 def load_data(filename, data_column_x, data_column_y):
     click.echo(f"  Reading \"{filename.split('/')[-1]}\"...")
 
@@ -214,7 +214,6 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
     if star_file_type == 'particles':
         if not classes:
             classes = data['rlnClassNumber'].unique()
-            print(f"Not classes {classes}")
         else:
             classes = [ int(n) for n in classes]
 
