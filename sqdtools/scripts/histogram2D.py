@@ -1,27 +1,70 @@
 # a python script to plot histograms of defocus, etc...
-import starfile
+#import starfile
+from starfile_rs import read_star
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-# from colorama import Fore, Style, init
 import click
 from os import listdir as os_listdir, path as os_path
 import ast
+import time
+import functools
+
+
 """
 To Do:
+  1. get working
+  3. expand to micrographs
+
   1. Equalize the axes sharey=True
   2. Add title
   3. Read healpix order from *_optimiser.star to adjust gridsize
     a. for healpix 2 grid size of 25 is good (0=30, 1=15, 2=7.5)
 """
 
-# Initialize colorama
-# init()
+def timer(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        print(f"    {func.__name__} took {end - start:.4f} seconds")
+        return result
+    return wrapper
 
+# @timer
+# def load_data(filename, data_column_x, data_column_y):
+#     click.echo(f"  Reading \"{filename.split('/')[-1]}\"...")  # Gets file name from the path
+#     star_df = starfile.read(filename)
 
+#     valid_data_columns = star_df['particles'].columns.tolist()
+
+#     # print the data columns in the star file and quit
+#     if data_column_x == "list" or data_column_y == "list":
+#         click.echo("\n  The following are valid \"x\" and \"y\" data_column names:")
+#         for item in valid_data_columns:
+#             print(f"   {item}")
+#         exit()
+
+#     # catches bad column names
+#     elif data_column_x not in valid_data_columns or data_column_x not in valid_data_columns:
+#         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column_x}\" is not a valid column name in \"{input_file.split('/')[-1]}\"")
+#         click.echo("\n  The following are valid \"x\" and \"y\" data_column names:")
+#         for item in valid_data_columns:
+#             print(f"   {item}")
+#         exit()
+
+#     data = star_df['particles'][['rlnClassNumber', data_column_x, data_column_y]]
+#     # try:
+#     #     read from micrographs
+#     return data
+
+@timer
 def load_data(filename, data_column_x, data_column_y):
-    star_df = starfile.read(filename)
+    click.echo(f"  Reading \"{filename.split('/')[-1]}\"...")
 
-    valid_data_columns = star_df['particles'].columns.tolist()
+    star_df = read_star(filename)
+    star_df = star_df['particles'].to_pandas()
+    valid_data_columns = star_df.columns.tolist()
 
     # print the data columns in the star file and quit
     if data_column_x == "list" or data_column_y == "list":
@@ -32,36 +75,14 @@ def load_data(filename, data_column_x, data_column_y):
 
     # catches bad column names
     elif data_column_x not in valid_data_columns or data_column_x not in valid_data_columns:
-        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column_x}\" is not a valid column name in \"{input.split('/')[-1]}\"")
+        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column_x}\" is not a valid column name in \"{input_file.split('/')[-1]}\"")
         click.echo("\n  The following are valid \"x\" and \"y\" data_column names:")
         for item in valid_data_columns:
             print(f"   {item}")
         exit()
 
-    data = star_df['particles'][['rlnClassNumber', data_column_x, data_column_y]]
-    # try:
-    #     read from micrographs
+    data = star_df[['rlnClassNumber', data_column_x, data_column_y]]
     return data
-
-
-def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes):
-    fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=True, tight_layout=True)
-
-    # Deal with edge case of 1 class passed
-    if len(classes) == 1:  # or not by_class: 
-        axs = [axs]
-
-    # Plot a histogram for each class
-    for ax, class_number in zip(axs, classes):
-        filter = df['rlnClassNumber'] == class_number
-        class_data = df[filter]
-        hb = ax.hexbin(class_data[data_column_x], class_data[data_column_y], bins='log', gridsize=gridsize)
-        ax.set_title(f'Class {class_number}: {data_column_x} vs. {data_column_y}')
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.1)
-        cb = fig.colorbar(hb, ax=ax, cax=cax)
-        cb.set_label('Particles')
-    return fig
 
 
 def histogram2d(df, data_column_x, data_column_y, gridsize, classes):
@@ -75,6 +96,26 @@ def histogram2d(df, data_column_x, data_column_y, gridsize, classes):
     cax = divider.append_axes('right', size='5%', pad=0.1)
     cb = fig.colorbar(hb, ax=ax, cax=cax)
     cb.set_label('Particles')
+    return fig
+
+
+def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes):
+    fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=True, tight_layout=True)
+
+    # Deal with edge case of 1 class passed
+    if len(classes) == 1:  # or not by_class:
+        axs = [axs]
+
+    # Plot a histogram for each class
+    for ax, class_number in zip(axs, classes):
+        filter = df['rlnClassNumber'] == class_number
+        class_data = df[filter]
+        hb = ax.hexbin(class_data[data_column_x], class_data[data_column_y], bins='log', gridsize=gridsize)
+        ax.set_title(f'Class {class_number}: {data_column_x} vs. {data_column_y}')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.1)
+        cb = fig.colorbar(hb, ax=ax, cax=cax)
+        cb.set_label('Particles')
     return fig
 
 
@@ -92,35 +133,32 @@ def get_file_paths(dir, suffix) -> list[str]:
 
 def validate_extension(path, extension):
     if path.endswith(extension):
-
         return path
-
     else:
         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} Wrong file format. \"{path}\" does not end with \"{extension}\".")
-
         raise ValueError()
 
 
 @click.command(no_args_is_help=True)
-@click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
+@click.option('--i', '--input', 'input_file', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--x', '--data_x', 'data_column_x', default='rlnAngleRot', show_default=True, type=str, help="RELION data column to plot on x. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--y', '--data_y', 'data_column_y', default='rlnAngleTilt', show_default=True, type=str, help="RELION data column to plot on y. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class.")
 @click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes.", metavar='<class number>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
-def cli(input, data_column_x, data_column_y, classes, by_class, out):
+def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
     """
     Plots a 2D histogram.
     Defaults to Euler Angles Orientation plots.
     """
 
     # Validate the inputs
-    input = validate_extension(input, '.star')
+    input_file = validate_extension(input_file, '.star')
 
     # try to automatically set the gridsize
-    model_files = get_file_paths(input, "_optimiser.star")
-    model_file = model_files[-1]  # gets latest file
     try:
+        model_files = get_file_paths(input_file, "_optimiser.star")
+        model_file = model_files[-1]  # gets latest file
         with open(model_file, 'r') as file:
             for line in file:
                 if '--healpix_order' in line:
@@ -139,8 +177,8 @@ def cli(input, data_column_x, data_column_y, classes, by_class, out):
     except:
         gridsize = 50
 
-    click.echo(f"  Reading \"{input.split('/')[-1]}\"...")  # Gets file name from the path
-    data = load_data(input, data_column_x, data_column_y)
+    #data = load_data(input_file, data_column_x, data_column_y)
+    data = load_data(input_file, data_column_x, data_column_y)
 
     # Allows sorting by classes
     if not classes:  # Get all classes if not specified
