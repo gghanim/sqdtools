@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sqdtools',
-    version='0.1.1',
+    version='0.1.3',
     author='George Ghanim',
     author_email='gghanim@princeton.edu',
     packages=find_packages(),
@@ -10,6 +10,7 @@ setup(
     install_requires=[
         'click',
         'starfile',
+        'starfile-rs',
         'pandas',
         'numpy',
         'healpy',
