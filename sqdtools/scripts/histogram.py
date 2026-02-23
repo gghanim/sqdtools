@@ -70,28 +70,6 @@ def calculate_bins(bin_width, dataframe):
     return bins
 
 
-def histogram_by_class(df, data_column, classes, bin_width, x_range):
-    bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
-
-    fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
-
-    # Deal with edge case of 1 class passed
-    if len(classes) == 1:  # or not by_class:
-        axs = [axs]
-
-    for ax, class_number in zip(axs, classes):
-        filter = df['rlnClassNumber'] == class_number
-        class_data = df[filter][data_column]
-        ax.hist(class_data, bins=bins, color='purple')
-
-        if x_range:
-            x_min, x_max = x_range
-            ax.set_xlim(x_min, x_max)
-
-        ax.set_title(f'Class {class_number}: {data_column}')
-    return fig
-
-
 def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
     bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
 
@@ -113,6 +91,28 @@ def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
 
     elif star_file_type == 'micrographs':
         ax.set_ylabel("Number of micrographs")
+    return fig
+
+
+def histogram_by_class(df, data_column, classes, bin_width, x_range):
+    bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
+
+    fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
+
+    # Deal with edge case of 1 class passed
+    if len(classes) == 1:  # or not by_class:
+        axs = [axs]
+
+    for ax, class_number in zip(axs, classes):
+        filter = df['rlnClassNumber'] == class_number
+        class_data = df[filter][data_column]
+        ax.hist(class_data, bins=bins, color='purple')
+
+        if x_range:
+            x_min, x_max = x_range
+            ax.set_xlim(x_min, x_max)
+
+        ax.set_title(f'Class {class_number}: {data_column}')
     return fig
 
 
