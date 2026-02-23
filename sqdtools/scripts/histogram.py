@@ -1,17 +1,14 @@
 # a python script to plot histograms of data, etc...
-from starfile import read
+#from starfile import read
 import matplotlib.pyplot as plt
 import numpy as np
 import click
 from ast import literal_eval
-"""
-To Do:
-  1. Equalize the axes sharey=True
-"""
+from starfile_rs import read_star
 
 
 def load_data(filename, data_column):
-    star_df = read(filename)
+    star_df = read_star(filename)
 
     # check if the starfile is for micrographs, or particles, but not both
     match star_df:
@@ -25,8 +22,8 @@ def load_data(filename, data_column):
         case _:
             click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown star file type.")
             exit()
-
-    valid_data_columns = star_df[star_file_type].columns.tolist()
+    star_df = star_df[star_file_type].to_pandas()
+    valid_data_columns = star_df.columns.tolist()
 
     # print the data columns in the star file and quit
     if data_column == "list":
@@ -37,7 +34,7 @@ def load_data(filename, data_column):
 
     # catches bad column names
     elif data_column not in valid_data_columns:
-        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column}\" is not a valid column name in \"{input.split('/')[-1]}\"")
+        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} \"{data_column}\" is not a valid column name in \"{input_file.split('/')[-1]}\"")
         click.echo("\n  The following are valid data_column names:")
         for item in valid_data_columns:
             print(f"   {item}")
@@ -45,9 +42,9 @@ def load_data(filename, data_column):
 
     # make a dataframe of only what is needed
     if star_file_type == 'particles':
-        data = star_df[star_file_type][['rlnClassNumber', data_column]]
+        data = star_df[['rlnClassNumber', data_column]]
     elif star_file_type == 'micrographs':
-        data = star_df[star_file_type][[data_column]]
+        data = star_df[[data_column]]
 
     return data, star_file_type
 
@@ -74,10 +71,6 @@ def calculate_bins(bin_width, dataframe):
 
 def histogram_by_class(df, data_column, classes, bin_width, x_range):
     bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
-    # if not bin_width:
-    #     bins = fdb(df[data_column])
-    # elif bin_width:
-    #     bins = calculate_bins(bin_width, df[data_column])
 
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
 
@@ -131,24 +124,24 @@ def validate_extension(path, extension):
 
 
 @click.command(no_args_is_help=True)
-@click.option('--i', '--input', 'input', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
+@click.option('--i', '--input', 'input_file', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
 @click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>')
 @click.option('--x', '--x_range', 'x_range', type=(float, float), help="Specify X-axis scale. Pass as two values.", metavar='<min> <max>')
 @click.option('--b', '--bin_width', 'bin_width', type=str, help="Manualy specify bin width.", metavar='<bin width>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
-def cli(input, data_column, classes, by_class, bin_width, x_range, out):
+def cli(input_file, data_column, classes, by_class, bin_width, x_range, out):
     """
     Plots a histogram.
     Defaults to Defocus plots.
     """
 
     # Validate the inputs
-    input = validate_extension(input, '.star')
+    input_file = validate_extension(input_file, '.star')
 
-    click.echo(f"  Reading \"{input.split('/')[-1]}\"...")  # Gets file name from the path
-    data, star_file_type = load_data(input, data_column)
+    click.echo(f"  Reading \"{input_file.split('/')[-1]}\"...")  # Gets file name from the path
+    data, star_file_type = load_data(input_file, data_column)
 
     # evaluates classes if particles
     if star_file_type == 'particles':
