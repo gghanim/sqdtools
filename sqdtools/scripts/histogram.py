@@ -82,7 +82,7 @@ def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
 
     # set tile and axis based on infered star_file_type
     ax.set_xlabel(f"{data_column}")
-    if classes and any(classes):
+    if classes is not None:
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
 
     elif star_file_type == 'particles':
