@@ -22,6 +22,7 @@ def load_data(filename, data_column):
         case _:
             click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} unknown star file type.")
             exit()
+
     star_df = star_df[star_file_type].to_pandas()
     valid_data_columns = star_df.columns.tolist()
 
