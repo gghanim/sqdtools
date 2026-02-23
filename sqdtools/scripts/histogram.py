@@ -127,7 +127,7 @@ def validate_extension(path, extension):
 @click.option('--i', '--input', 'input_file', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
-@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. Pass a python list for multiple classes. Ignored for micrograph star files.", metavar='<class number>')
+@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. You can specify multiple. Ignored for micrograph star files.", metavar='<class number>')
 @click.option('--x', '--x_range', 'x_range', type=(float, float), help="Specify X-axis scale. Pass as two values.", metavar='<min> <max>')
 @click.option('--b', '--bin_width', 'bin_width', type=str, help="Manualy specify bin width.", metavar='<bin width>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
@@ -147,10 +147,8 @@ def cli(input_file, data_column, classes, by_class, bin_width, x_range, out):
     if star_file_type == 'particles':
         if not classes:
             classes = data['rlnClassNumber'].unique()
-        elif '[' in classes:
-            classes = literal_eval(classes)
         else:
-            classes = [int(classes)]
+            classes = [ int(n) for n in classes]
 
         classes.sort()
         filter = data['rlnClassNumber'].isin(classes)
