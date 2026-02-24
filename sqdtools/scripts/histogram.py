@@ -1,5 +1,4 @@
 # a python script to plot histograms of data, etc...
-#from starfile import read
 import matplotlib.pyplot as plt
 import numpy as np
 import click
@@ -86,10 +85,10 @@ def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
         ax.set_title(f"Class {', '.join(str(x) for x in classes)}: {data_column}")
 
     if star_file_type == 'particles':
-        ax.set_ylabel("Number of particles")
+        ax.set_ylabel("Particles")
 
     elif star_file_type == 'micrographs':
-        ax.set_ylabel("Number of micrographs")
+        ax.set_ylabel("Micrographs")
     return fig
 
 
