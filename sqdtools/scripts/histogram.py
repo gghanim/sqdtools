@@ -92,7 +92,7 @@ def histogram(df, data_column, classes, star_file_type, bin_width, x_range):
     return fig
 
 
-def histogram_by_class(df, data_column, classes, bin_width, x_range):
+def histogram_by_class(df, data_column, classes, bin_width, x_range, star_file_type):
     bins = fdb(df[data_column]) if not bin_width else calculate_bins(bin_width, df[data_column])
 
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=False, tight_layout=True)
@@ -112,6 +112,11 @@ def histogram_by_class(df, data_column, classes, bin_width, x_range):
 
         ax.set_title(f'Class {class_number}: {data_column}')
 
+        if star_file_type == 'particles':
+            ax.set_ylabel("Particles")
+        elif star_file_type == 'micrographs':
+            ax.set_ylabel("Micrographs")
+
     ax.set_xlabel(f"{data_column}")
     return fig
 
@@ -128,7 +133,7 @@ def validate_extension(path, extension):
 @click.option('--i', '--input', 'input_file', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the input .star file", metavar='<starfile.star>')
 @click.option('--data_column', 'data_column', default='rlnDefocusU', show_default=True, type=str, help="RELION data column to plot. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 @click.option('--by_class', is_flag=True, help="Split by class. Ignored for micrograph star files.")
-@click.option('--c', '--classes', 'classes', type=str, help="Specify which class to plot. You can specify multiple. Ignored for micrograph star files.", metavar='<class number>')
+@click.option('--c', '--classes', 'classes', multiple=True, help="Specify which class to plot. You can specify multiple. Ignored for micrograph star files.", metavar='<class number>')
 @click.option('--x', '--x_range', 'x_range', type=(float, float), help="Specify X-axis scale. Pass as two values.", metavar='<min> <max>')
 @click.option('--b', '--bin_width', 'bin_width', type=str, help="Manualy specify bin width.", metavar='<bin width>')
 @click.option('--o', '--output', 'out', is_flag=False, flag_value="histogram_output.pdf", help="Optional name for the output file.", metavar='<output.pdf>')
@@ -161,7 +166,7 @@ def cli(input_file, data_column, classes, by_class, bin_width, x_range, out):
 
     if by_class:
         click.echo("  Plotting data by class...")
-        histogram_by_class(data, data_column, classes, bin_width, x_range)
+        histogram_by_class(data, data_column, classes, bin_width, x_range, star_file_type)
     else:
         click.echo("  Plotting data...")
         histogram(data, data_column, classes, star_file_type, bin_width, x_range)
