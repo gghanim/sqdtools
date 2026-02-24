@@ -129,7 +129,7 @@ def histogram2d(df, data_column_x, data_column_y, gridsize, classes, star_file_t
     return fig
 
 
-def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes):
+def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes, star_file_type):
     fig, axs = plt.subplots(len(classes), 1, sharex=True, sharey=True, tight_layout=True)
 
     # Deal with edge case of 1 class passed
@@ -142,10 +142,17 @@ def histogram2d_by_class(df, data_column_x, data_column_y, gridsize, classes):
         class_data = df[filter]
         hb = ax.hexbin(class_data[data_column_x], class_data[data_column_y], bins='log', gridsize=gridsize)
         ax.set_title(f'Class {class_number}: {data_column_x} vs. {data_column_y}')
+        ax.set_ylabel(f"{data_column_y}")
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.1)
         cb = fig.colorbar(hb, ax=ax, cax=cax)
-        cb.set_label('Particles')
+
+        if star_file_type == 'particles':
+            cb.set_label('Particles')
+        elif star_file_type == 'micrographs':
+            cb.set_label('Micrographs')
+
+    ax.set_xlabel(f"{data_column_x}")
     return fig
 
 
@@ -184,7 +191,6 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
 
     # Validate the inputs
     input_file = validate_extension(input_file, '.star')
-    print(type(classes))
     # try to automatically set the gridsize
     try:
         model_files = get_file_paths(input_file, "_optimiser.star")
@@ -229,7 +235,7 @@ def cli(input_file, data_column_x, data_column_y, classes, by_class, out):
 
     if by_class:
         click.echo("  Plotting data by class...")
-        histogram2d_by_class(data, data_column_x, data_column_y, gridsize, classes)
+        histogram2d_by_class(data, data_column_x, data_column_y, gridsize, classes, star_file_type)
     else:
         click.echo("  Plotting data.")
         histogram2d(data, data_column_x, data_column_y, gridsize, classes, star_file_type)

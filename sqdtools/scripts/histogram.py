@@ -112,6 +112,8 @@ def histogram_by_class(df, data_column, classes, bin_width, x_range):
             ax.set_xlim(x_min, x_max)
 
         ax.set_title(f'Class {class_number}: {data_column}')
+
+    ax.set_xlabel(f"{data_column}")
     return fig
 
 
