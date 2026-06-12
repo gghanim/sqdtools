@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='sqdtools',
     version='0.2.0',
-    author='George Ghanim',
+    author='George E. Ghanim',
     author_email='gghanim@princeton.edu',
     packages=find_packages(),
     include_package_data=True,
