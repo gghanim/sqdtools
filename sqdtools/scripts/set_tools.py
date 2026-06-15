@@ -4,13 +4,17 @@ from starfile_rs import read_star
 import starfile
 import pandas as pd
 
-def get_data_columns():
-    pass
-#         click.echo("\n  The following are valid data_column names:")
-#         for item in valid_data_columns:
-#             print(f"   {item}")
-#         exit()
-
+def write_unique(df_type, label, unique_df, file_df):
+    if df_type == 'list':
+        click.echo(f'    File {label} is not the usual RELION STAR format. Skipping...')
+    elif len(unique_df) == 0:
+        click.echo(f'    No unique entries to file {label}. Skipping...')
+    else:
+        unique_starfile = {
+        'optics' : file_df['optics'],
+        df_type: unique_dt}
+        starfile.write(unique_starfile, "{label}_unique.star")
+        click.echo(f'    Wrote {label} unique to \"{label}_unique.star\".')
 
 def validate_extension(path, extension):
     if path.endswith(extension):
@@ -19,9 +23,33 @@ def validate_extension(path, extension):
         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} Wrong file format. \"{path}\" does not end with \"{extension}\".")
         raise ValueError()
 
+def write_intersect(df_type, label, other_label, intersect_df, unique_df, file_df):
+    if df_type == 'items':
+        click.echo(f'\n    File {label} is not the usual RELION STAR format. Skipping...')
+    else:
+        intersect_label = f"{label}n{other_label}"
+        if len(intersect_df) == 0:
+            click.echo(f'\n      {len(intersect_df):,} particles in {label} intersect {other_label}. Skipping writing...')
+        else:
+            intersect_starfile = {
+            'optics' : file_df['optics'],
+            df_type: intersect_df}
+            starfile.write(intersect_starfile, f"{intersect_label}_keeping{label}.star")
+            click.echo(f'\n    Wrote {label} intersect {other_label} (keeping {label}) to \"{intersect_label}_keeping{label}.star\".')
+            click.echo(f'      {len(intersect_df):,} particles in {label} intersect {other_label}.')
+
+        if len(unique_df) == 0:
+            click.echo(f'\n      {len(unique_df):,} particles in {label} unique. Skipping writing...')
+        else:
+            unique_starfile = {
+            'optics' : file_df['optics'],
+            df_type: unique_df}
+            starfile.write(unique_starfile, f"{label}_unique.star")
+            click.echo(f'    Wrote {label} unique to \"{label}_unique.star\".')
+            click.echo(f'      {len(unique_df):,} particles in {label} unique.')
+
 
 @click.command(no_args_is_help=True)
-# @click.option('--i', '--input', 'input_file', multiple=True, required=True, type=click.Path(exists=True, resolve_path=False), help="Path to input .star files. Multiple inputs can be passed for set operations.", metavar='<starfile.star>')
 @click.option('--a', '--input_a', 'input_file_a', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to input .star file A.", metavar='<starfile_A.star>')
 @click.option('--b', '--input_b', 'input_file_b', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to input .star file B.", metavar='<starfile_B.star>')
 @click.option('--n', '--intersect', 'operation', flag_value='intersect', default=True, help="Intesect file A with file B. Four files will be written. AnB(keeping A).star, A_unique.star, BnA(keeping B).star, and B_unique.star.")
@@ -33,37 +61,29 @@ def validate_extension(path, extension):
 def cli(input_file_a, input_file_b, operation, data_column):
     
     # Read file A
-    click.echo(f"  Reading \"{input_file_a}\" as file A.")
     validate_extension(input_file_a, '.star')
     star_a = starfile.read(input_file_a)
     
     # Read file B
-    click.echo(f"  Reading \"{input_file_b}\" as file B.")
     validate_extension(input_file_b, '.star')
     star_b = starfile.read(input_file_b)
 
     # Read files
     if isinstance(star_a, pd.DataFrame):
-        dfA, A_type = star_a, 'list'
-        click.echo(f'    {len(dfA):,} items in file A.')
+        dfA, A_type = star_a, 'items'
     elif isinstance(star_a, dict):
         if 'micrographs' in star_a.keys():
             dfA, A_type = star_a['micrographs'], 'micrographs'
-            click.echo(f'    {len(dfA):,} micrographs in file A.')
         elif 'particles' in star_a.keys():
             dfA, A_type = star_a['particles'], 'particles'
-            click.echo(f'    {len(dfA):,} particles in file A.')
 
     if isinstance(star_b, pd.DataFrame):
-        dfB, B_type = star_b, 'list'
-        click.echo(f'    {len(dfB):,} items in file B.')
+        dfB, B_type = star_b, 'items'
     elif isinstance(star_b, dict):
         if 'micrographs' in star_b.keys():
             dfB, B_type = star_b['micrographs'], 'micrographs'
-            click.echo(f'    {len(dfB):,} micrographs in file B.')
         elif 'particles' in star_b.keys():
             dfB, B_type = star_b['particles'], 'particles'
-            click.echo(f'    {len(dfB):,} particles in file B.')
     
     # Check data columns
     data_columns = list(set(data_column))
@@ -76,35 +96,10 @@ def cli(input_file_a, input_file_b, operation, data_column):
             print(f"    {item}")
         exit()
 
-    # if operation == 'unique':
-    #     if (length := len(input_file)) > 1:
-    #         click.echo(f"\n  Merging starfiles.")
-    #         merged = {}
-    #         for data in file_list:
-    #                 for key, df in data.items():
-    #                     if key in merged:
-    #                         merged[key] = pd.concat([merged[key], df], ignore_index=True)
-    #                     else:
-    #                         merged[key] = df.copy()
-    #     else:
-    #         merged = star_a
-
-    #     total_particles = len(merged['particles'])
-    #     click.echo(f'    {total_particles:,} total particles.')
-
-    #     # Drop duplicates
-    #     for key in merged:
-    #         if key == 'optics':
-    #             merged[key] = merged[key].drop_duplicates(subset='rlnOpticsGroupName')
-    #         if key == 'particles':
-    #             merged[key] = merged[key].drop_duplicates(subset='rlnImageName')
-
-    #     unique_particles = len(merged['particles'])
-    #     click.echo(f'    {total_particles-unique_particles:,} duplicate particles.')
-    #     click.echo(f'    {unique_particles:,} unique particles.')
-
-    #     click.echo(f'\n  Wrote {unique_particles:,} particles to \"unique.star\".')
-    #     starfile.write(merged, "unique.star")
+    click.echo(f"  Reading \"{input_file_a}\" as file A.")
+    click.echo(f"  Reading \"{input_file_b}\" as file B.")
+    click.echo(f'    {len(dfA):,} {A_type} in file A.')
+    click.echo(f'    {len(dfB):,} {B_type} in file B.')
 
     if operation == 'intersect':
         click.echo(f'\n  Intersecting files on {", ".join(f'"{x}"' for x in data_columns)}...')
@@ -114,49 +109,30 @@ def cli(input_file_a, input_file_b, operation, data_column):
         A_unique = (dfA.merge(dfB[data_columns], on=data_columns, how="left", indicator=True)
                    .query('_merge == "left_only"')
                    .drop(columns="_merge"))
-
-        if A_type == 'list':
-            click.echo(f'\n  File A is not the usual RELION STAR format. Skipping writing...')
-        else:
-            AnB_starfile = {
-            'optics' : star_a['optics'],
-            A_type: AnB}
-            starfile.write(AnB_starfile, "AnB_keepingA.star")
-
-            A_unique_starfile = {
-            'optics' : star_a['optics'],
-            A_type: A_unique}
-            starfile.write(A_unique_starfile, "A_unique.star")
-
-            click.echo(f'\n  Wrote A intersect B (keeping A) to \"AnB_keepingA.star\".')
-            click.echo(f'    {len(AnB):,} particles in A intersect B.')
-            click.echo(f'  Wrote A unique to \"A_unique.star\".')
-            click.echo(f'    {len(A_unique):,} particles in A unique.')
-
-
         # Take B intersection with A
         BnA = dfB.merge(dfA[data_columns], on=data_columns, how="inner")
         B_unique = (dfB.merge(dfA[data_columns], on=data_columns, how="left", indicator=True)
            .query('_merge == "left_only"')
            .drop(columns="_merge"))
 
-        if B_type == 'list':
-            click.echo(f'\n  File B is not the usual RELION STAR format. Skipping writing...')
-        else:
-            BnA_starfile = {
-            'optics' : star_b['optics'],
-            B_type: BnA}
-            starfile.write(BnA_starfile, "AnB_keepingB.star")
+        write_intersect(A_type, "A", "B", AnB, A_unique, star_a)
+        write_intersect(B_type, "B", "A", BnA, B_unique, star_b)
 
-            B_unique_starfile = {
-            'optics' : star_b['optics'],
-            B_type: B_unique}
-            starfile.write(B_unique_starfile, "B_unique.star")
+    if operation == 'unique':
+        click.echo(f'\n  Taking unique entries on {", ".join(f'"{x}"' for x in data_columns)}...')
 
-            click.echo(f'\n  Wrote B intersect A (keeping B) to \"BnA_keepingB.star\".')
-            click.echo(f'    {len(BnA):,} particles in A intersect B.')
-            click.echo(f'  Wrote B unique to \"B_unique.star\".')
-            click.echo(f'    {len(B_unique):,} particles in B unique.')
+        # Taking unique A
+        A_unique = (dfA.merge(dfB[data_columns], on=data_columns, how="left", indicator=True)
+                    .query('_merge == "left_only"')
+                    .drop(columns="_merge"))
+
+        # Taking unique B
+        B_unique = (dfB.merge(dfA[data_columns], on=data_columns, how="left", indicator=True)
+                    .query('_merge == "left_only"')
+                    .drop(columns="_merge"))
+
+        write_unique(A_type, 'A', A_unique, star_a)
+        write_unique(B_type, 'B', B_unique, star_b)
 
 
 if __name__ == '__main__':
