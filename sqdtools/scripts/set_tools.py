@@ -1,6 +1,5 @@
-import numpy as np
+# import numpy as np
 import click
-from starfile_rs import read_star
 import starfile
 import pandas as pd
 

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sqdtools',
-    version='0.2.0',
+    version='0.3.0',
     author='George E. Ghanim',
     author_email='gghanim@princeton.edu',
     packages=find_packages(),
@@ -22,7 +22,8 @@ setup(
             'sqdt_histogram2d = sqdtools.scripts.histogram2D:cli',
             'sqdt_plotAssign = sqdtools.scripts.plot_assign:cli',
             'sqdt_rebalance = sqdtools.scripts.rebalance:cli',
-            'sqdt_setTools = sqdtools.scripts.set_tools:cli'
+            'sqdt_setTools = sqdtools.scripts.set_tools:cli',
+            'sqdt_addBeamTilts = sqdtools.scripts.abtg:cli'
         ],
     },
     python_requires='>=3.11'
