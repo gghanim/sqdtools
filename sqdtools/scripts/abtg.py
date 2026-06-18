@@ -47,35 +47,74 @@ def add_bt_groups(bt_optics_df, lookup, star_file):
     starfile.write(new_sf, new_starfile_name)
     click.echo(f"      done.\n")
 
+def activate_required_flags(ctx, param, value):
+    """
+    Activates required flags if auto mode is not enabled.
+    """
+    # attributes to modify
+    attributes_to_activate = ['beamtilt_groups']
+    attributes_to_deactivate = ['particles']
+
+    if not value:
+        for p in ctx.command.params:
+            if isinstance(p, click.Option) and p.name in attributes_to_activate:
+                p.required = True
+            if isinstance(p, click.Option) and p.name in attributes_to_deactivate:
+                p.required = False
+
+    return value
 
 @click.command(no_args_is_help=True)
-@click.option('--b', '--beamtilt_groups', 'beamtilt_groups', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the beam tilt groups .star file", metavar='<beamtilt_groups.star>')
-@click.option('--c', '--ctf', 'ctf_mics', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the CTF corrected micrographs .star file", metavar='<micrographs_ctf.star>')
-@click.option('--m', '--motion_corr', 'motion_corr_mics', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the motion corrected micrographs .star file", metavar='<corrected_micrographs.star>')
+@click.option('--b', '--beamtilt_groups', 'beamtilt_groups', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to the beam tilt groups .star file", metavar='<beamtilt_groups.star>')
+@click.option('--c', '--ctf', 'ctf_mics', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to the CTF corrected micrographs .star file", metavar='<micrographs_ctf.star>')
+@click.option('--m', '--motion_corr', 'motion_corr_mics', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to the motion corrected micrographs .star file", metavar='<corrected_micrographs.star>')
 @click.option('--p', '--particles', 'particles', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to the particles .star file", metavar='<particles.star>')
+@click.option('--e', '--epu', 'epu', required=False, is_flag=True, is_eager=True, callback=activate_required_flags)
 
-def cli(beamtilt_groups, ctf_mics, motion_corr_mics, particles):
+def cli(beamtilt_groups, ctf_mics, motion_corr_mics, particles, epu):
+    # Check inputs, except beamtilt groups
+    input_list = [ctf_mics, motion_corr_mics, particles]
+    cleaned_input_list = [file for file in input_list if file is not None]
 
-    # Check inputs
-    input_list = [beamtilt_groups, ctf_mics, motion_corr_mics, particles]
-    for file in input_list:
+    if len(cleaned_input_list) == 0:
+        click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} At least one input file is required.")
+        exit()
+
+    for file in cleaned_input_list:
         validate_extension(file, '.star')
 
-    # Prepare the beam tilt lookup table
-    beamtilt_df = starfile.read(beamtilt_groups)
-    bt_lookup_df = beamtilt_df['movies']
-    bt_lookup_df['rlnMicrographMovieName'] = bt_lookup_df['rlnMicrographMovieName'].apply(lambda x: Path(x).stem).str.replace(".", "_")
-    lookup = bt_lookup_df.set_index('rlnMicrographMovieName')['rlnOpticsGroup']
-    # Prepare the beam tilt optics table
-    bt_optics_df = beamtilt_df['optics']
+    # Prepare beam shift mappings
+    if epu:
+        click.echo(f"  EPU mode activated.\n  Reading beam shift groups from EPU micrograph names...")
+        epu_df = starfile.read(particles)
+        second_datatable_key = list(epu_df.keys())[1]
+        epu_lookup_df = epu_df[second_datatable_key]
+        epu_lookup_df['rlnMicrographName'] = epu_lookup_df['rlnMicrographName'].apply(lambda x: Path(x).stem)
+        epu_lookup_df['rlnOpticsGroup'] = epu_lookup_df['rlnMicrographName'].apply(lambda x: Path(x).stem.split('_')[4]).astype(int)
+        lookup = epu_lookup_df.set_index('rlnMicrographName')['rlnOpticsGroup']
+        lookup = lookup[~lookup.index.duplicated(keep='first')]
 
-    # ctf_micrographs
-    add_bt_groups(bt_optics_df, lookup, ctf_mics)
-    # motcorr micrographs
-    add_bt_groups(bt_optics_df, lookup, motion_corr_mics)
-    # particles
-    add_bt_groups(bt_optics_df, lookup, particles)
+        #Make Optics table
+        optics_groups_values = [int(value) for value in epu_lookup_df['rlnOpticsGroup'].unique()]
+        optics_groups_values.sort()
+        bt_optics_df = pd.DataFrame({
+                                    'rlnOpticsGroupName': [f'opticsGroup{value}' for value in optics_groups_values],
+                                    'rlnOpticsGroup': optics_groups_values
+                                    })
+    else:
+        validate_extension(beamtilt_groups, '.star')
+        # Prepare the beam tilt lookup table
+        beamtilt_df = starfile.read(beamtilt_groups)
+        bt_lookup_df = beamtilt_df['movies']
+        bt_lookup_df['rlnMicrographMovieName'] = bt_lookup_df['rlnMicrographMovieName'].apply(lambda x: Path(x).stem).str.replace(".", "_")
+        lookup = bt_lookup_df.set_index('rlnMicrographMovieName')['rlnOpticsGroup']
 
+        # Prepare the beam tilt optics table
+        bt_optics_df = beamtilt_df['optics']
+
+    # Add the beam shift groups
+    for file in cleaned_input_list:
+        add_bt_groups(bt_optics_df, lookup, file)
 
 if __name__ == '__main__':
     cli(max_content_width=120)
