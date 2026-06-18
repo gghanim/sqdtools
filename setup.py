@@ -23,7 +23,7 @@ setup(
             'sqdt_plotAssign = sqdtools.scripts.plot_assign:cli',
             'sqdt_rebalance = sqdtools.scripts.rebalance:cli',
             'sqdt_setTools = sqdtools.scripts.set_tools:cli',
-            'sqdt_addBeamTilts = sqdtools.scripts.abtg:cli'
+            'sqdt_addBeamShiftGroups = sqdtools.scripts.absg:cli'
         ],
     },
     python_requires='>=3.11'
