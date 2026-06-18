@@ -90,6 +90,7 @@ def cli(beamtilt_groups, ctf_mics, motion_corr_mics, particles, epu):
         second_datatable_key = list(epu_df.keys())[1]
         epu_lookup_df = epu_df[second_datatable_key]
         epu_lookup_df['rlnMicrographName'] = epu_lookup_df['rlnMicrographName'].apply(lambda x: Path(x).stem)
+        epu_lookup_df.drop_duplicates(subset=['rlnMicrographName'], inplace=True) # Drop duplicates to make it faster
         epu_lookup_df['rlnOpticsGroup'] = epu_lookup_df['rlnMicrographName'].apply(lambda x: Path(x).stem.split('_')[4]).astype(int)
         lookup = epu_lookup_df.set_index('rlnMicrographName')['rlnOpticsGroup']
         lookup = lookup[~lookup.index.duplicated(keep='first')]
