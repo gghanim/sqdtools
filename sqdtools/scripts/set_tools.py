@@ -3,24 +3,24 @@ import click
 import starfile
 import pandas as pd
 
-def write_unique(df_type, label, unique_df, file_df):
-    if df_type == 'list':
-        click.echo(f'    File {label} is not the usual RELION STAR format. Skipping...')
-    elif len(unique_df) == 0:
-        click.echo(f'    No unique entries to file {label}. Skipping...')
-    else:
-        unique_starfile = {
-        'optics' : file_df['optics'],
-        df_type: unique_dt}
-        starfile.write(unique_starfile, "{label}_unique.star")
-        click.echo(f'    Wrote {label} unique to \"{label}_unique.star\".')
-
 def validate_extension(path, extension):
     if path.endswith(extension):
         return path
     else:
         click.echo(f"  {click.style('ERROR:', fg='red', bold=True)} Wrong file format. \"{path}\" does not end with \"{extension}\".")
         raise ValueError()
+
+def write_unique(df_type, label, unique_df, file_df):
+    if df_type == 'items':
+        click.echo(f'    File {label} is not the usual RELION STAR format. Skipping...')
+    elif len(unique_df) == 0:
+        click.echo(f'    No unique entries to file {label}. Skipping...')
+    else:
+        unique_starfile = {
+        'optics' : file_df['optics'],
+        df_type: unique_df}
+        starfile.write(unique_starfile, f"{label}_unique.star")
+        click.echo(f'    Wrote {label} unique to \"{label}_unique.star\".')
 
 def write_intersect(df_type, label, other_label, intersect_df, unique_df, file_df):
     if df_type == 'items':
@@ -47,58 +47,116 @@ def write_intersect(df_type, label, other_label, intersect_df, unique_df, file_d
             click.echo(f'    Wrote {label} unique to \"{label}_unique.star\".')
             click.echo(f'      {len(unique_df):,} particles in {label} unique.')
 
+def write_drop_duplicates(df_type, unique_df, file_df, input_file):
+    if df_type == 'items':
+        click.echo(f'\n  Input file is not the usual RELION STAR format. Skipping...')
+    else:
+        unique_starfile = {
+        'optics' : file_df['optics'],
+        df_type: unique_df}
+        output_file = f"{input_file.removesuffix(".star")}_drop_duplicates.star"
+        starfile.write(unique_starfile, output_file)
+        click.echo(f'  {len(unique_df):,} unique entries written to \"{output_file}\".')
+
 
 @click.command(no_args_is_help=True)
 @click.option('--a', '--input_a', 'input_file_a', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to input .star file A.", metavar='<starfile_A.star>')
-@click.option('--b', '--input_b', 'input_file_b', required=True, type=click.Path(exists=True, resolve_path=False), help="Path to input .star file B.", metavar='<starfile_B.star>')
+@click.option('--b', '--input_b', 'input_file_b', required=False, type=click.Path(exists=True, resolve_path=False), help="Path to input .star file B.", metavar='<starfile_B.star>')
 @click.option('--n', '--intersect', 'operation', flag_value='intersect', default=True, help="Intesect file A with file B. Four files will be written. AnB(keeping A).star, A_unique.star, BnA(keeping B).star, and B_unique.star.")
 @click.option('--u', '--unique', 'operation', flag_value='unique', help="operation xyz")
+@click.option('--d', '--drop_duplicates', 'operation', flag_value='drop_duplicates', help="operation xyz")
 @click.option('--data_column', 'data_column', multiple=True, required=True, type=str, help="RELION data column to select. \"list\" will print valid data column names.", metavar='<rlnDataColumn>')
 #@click.option('--o', '--output', 'out', is_flag=False, flag_value=None, help="Optional name to add for the output files.", metavar='<output_starfile.star>')
 
 
 def cli(input_file_a, input_file_b, operation, data_column):
     
-    # Read file A
-    validate_extension(input_file_a, '.star')
-    star_a = starfile.read(input_file_a)
-    
-    # Read file B
-    validate_extension(input_file_b, '.star')
-    star_b = starfile.read(input_file_b)
+    if operation == 'drop_duplicates':
+        """
+        If statement to handle one input file. Future version will allow multiple input files under one flag.This will require refactoring so we will do later.
+        """
+        # Read file A
+        validate_extension(input_file_a, '.star')
+        star_a = starfile.read(input_file_a)
 
-    # Read files
-    if isinstance(star_a, pd.DataFrame):
-        dfA, A_type = star_a, 'items'
-    elif isinstance(star_a, dict):
-        if 'micrographs' in star_a.keys():
-            dfA, A_type = star_a['micrographs'], 'micrographs'
-        elif 'particles' in star_a.keys():
-            dfA, A_type = star_a['particles'], 'particles'
+        # Parses dictionary of starfile data tables
+        if isinstance(star_a, pd.DataFrame):
+            dfA, A_type = star_a, 'items'
+        elif isinstance(star_a, dict):
+            if 'micrographs' in star_a.keys():
+                dfA, A_type = star_a['micrographs'], 'micrographs'
+            elif 'particles' in star_a.keys():
+                dfA, A_type = star_a['particles'], 'particles'
 
-    if isinstance(star_b, pd.DataFrame):
-        dfB, B_type = star_b, 'items'
-    elif isinstance(star_b, dict):
-        if 'micrographs' in star_b.keys():
-            dfB, B_type = star_b['micrographs'], 'micrographs'
-        elif 'particles' in star_b.keys():
-            dfB, B_type = star_b['particles'], 'particles'
-    
-    # Check data columns
-    data_columns = list(set(data_column))
-    if "list" in data_columns:
-        valid_data_columns_A = dfA.columns.tolist()
-        valid_data_columns_B = dfB.columns.tolist()
-        valid_data_columns = list(set(valid_data_columns_A) & set(valid_data_columns_B))
-        click.echo("\n  The following are valid data_column names in file A and in file B:")
-        for item in valid_data_columns:
-            print(f"    {item}")
-        exit()
+        # Check data columns
+        data_columns = list(set(data_column))
+        if "list" in data_columns:
+            valid_data_columns_A = dfA.columns.tolist()
+            valid_data_columns = list(set(valid_data_columns_A))
+            click.echo("\n  The following are valid data_column names:")
+            for item in valid_data_columns:
+                print(f"    {item}")
+            exit()
 
-    click.echo(f"  Reading \"{input_file_a}\" as file A.")
-    click.echo(f"  Reading \"{input_file_b}\" as file B.")
-    click.echo(f'    {len(dfA):,} {A_type} in file A.')
-    click.echo(f'    {len(dfB):,} {B_type} in file B.')
+
+        click.echo(f"  Reading \"{input_file_a}\".")
+        click.echo(f'    {len(dfA):,} {A_type} in input file.')
+
+        # Count diplicates
+        n_duplicates = dfA['rlnImageName'].duplicated().sum()
+        n_duplicate_rows = dfA['rlnImageName'].duplicated(keep=False).sum()
+        click.echo(f'    {n_duplicates:,} duplicate {data_columns[0]} entries.')
+        if n_duplicate_rows == 0:
+            click.echo(f"\n  No duplicates found. Exiting...")
+            exit()
+
+        # Remove duplicates
+        unique_df = dfA.drop_duplicates(subset=data_columns[0])
+        write_drop_duplicates(A_type, unique_df, star_a, input_file_a)
+
+
+
+    else:
+        # Read file A
+        validate_extension(input_file_a, '.star')
+        star_a = starfile.read(input_file_a)
+
+        # Read file B
+        validate_extension(input_file_b, '.star')
+        star_b = starfile.read(input_file_b)
+
+        # Read files
+        if isinstance(star_a, pd.DataFrame):
+            dfA, A_type = star_a, 'items'
+        elif isinstance(star_a, dict):
+            if 'micrographs' in star_a.keys():
+                dfA, A_type = star_a['micrographs'], 'micrographs'
+            elif 'particles' in star_a.keys():
+                dfA, A_type = star_a['particles'], 'particles'
+
+        if isinstance(star_b, pd.DataFrame):
+            dfB, B_type = star_b, 'items'
+        elif isinstance(star_b, dict):
+            if 'micrographs' in star_b.keys():
+                dfB, B_type = star_b['micrographs'], 'micrographs'
+            elif 'particles' in star_b.keys():
+                dfB, B_type = star_b['particles'], 'particles'
+
+        # Check data columns
+        data_columns = list(set(data_column))
+        if "list" in data_columns:
+            valid_data_columns_A = dfA.columns.tolist()
+            valid_data_columns_B = dfB.columns.tolist()
+            valid_data_columns = list(set(valid_data_columns_A) & set(valid_data_columns_B))
+            click.echo("\n  The following are valid data_column names in file A and in file B:")
+            for item in valid_data_columns:
+                print(f"    {item}")
+            exit()
+
+        click.echo(f"  Reading \"{input_file_a}\" as file A.")
+        click.echo(f"  Reading \"{input_file_b}\" as file B.")
+        click.echo(f'    {len(dfA):,} {A_type} in file A.')
+        click.echo(f'    {len(dfB):,} {B_type} in file B.')
 
     if operation == 'intersect':
         click.echo(f'\n  Intersecting files on {", ".join(f'"{x}"' for x in data_columns)}...')
