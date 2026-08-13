@@ -54,7 +54,7 @@ def write_drop_duplicates(df_type, unique_df, file_df, input_file):
         unique_starfile = {
         'optics' : file_df['optics'],
         df_type: unique_df}
-        output_file = f"{input_file.removesuffix(".star")}_drop_duplicates.star"
+        output_file = f'{input_file.removesuffix(".star")}_drop_duplicates.star'
         starfile.write(unique_starfile, output_file)
         click.echo(f'  {len(unique_df):,} unique entries written to \"{output_file}\".')
 
