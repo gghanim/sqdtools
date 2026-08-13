@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sqdtools',
-    version='0.3.0',
+    version='0.3.2',
     author='George E. Ghanim',
     author_email='gghanim@princeton.edu',
     packages=find_packages(),
@@ -26,5 +26,5 @@ setup(
             'sqdt_addBeamShiftGroups = sqdtools.scripts.absg:cli'
         ],
     },
-    python_requires='>=3.11'
+    python_requires='>=3.14'
 )
